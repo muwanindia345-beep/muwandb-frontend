@@ -79,7 +79,7 @@ export default function Landing() {
           </div>
           <pre style={{ color: '#a855f7', fontSize: 'clamp(11px, 2vw, 14px)', overflowX: 'auto', lineHeight: 1.8 }}>
 {`// Connect MuwanDB to any app
-const res = await fetch('https://muwandb-server.onrender.com/query', {
+const res = await fetch(import.meta.env.VITE_API_URL + '/query', {
   method: 'POST',
   headers: {
     'x-api-key': 'mwn_anon_...',

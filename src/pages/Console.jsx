@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 
-const API = import.meta.env.VITE_API_URL
+const API = '/api'
 
 export default function Console({ user }) {
   const [query, setQuery] = useState('')

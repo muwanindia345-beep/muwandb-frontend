@@ -78,12 +78,12 @@ export default function Dashboard({ user }) {
       <div className="card" style={{ background: '#0d0d14' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600 }}>Quick Connect</span>
-          <button onClick={() => copy(`const res = await fetch('${import.meta.env.VITE_API_URL}/query', {\n  method: 'POST',\n  headers: {\n    'x-api-key': '${user.anonKey}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    query: 'SELECT * FROM your_table',\n    dbPassword: 'your_db_password',\n    userId: currentUser.id\n  })\n})`, 'snippet')} className="btn btn-outline" style={{ fontSize: '12px', padding: '4px 10px' }}>
+          <button onClick={() => copy(`const res = await fetch('${'/api'}/query', {\n  method: 'POST',\n  headers: {\n    'x-api-key': '${user.anonKey}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    query: 'SELECT * FROM your_table',\n    dbPassword: 'your_db_password',\n    userId: currentUser.id\n  })\n})`, 'snippet')} className="btn btn-outline" style={{ fontSize: '12px', padding: '4px 10px' }}>
             {copied === 'snippet' ? '✅ Copied!' : 'Copy Code'}
           </button>
         </div>
         <pre style={{ fontSize: 'clamp(10px, 2vw, 12px)', color: '#a855f7', overflowX: 'auto', lineHeight: 1.8 }}>
-{`const res = await fetch('${import.meta.env.VITE_API_URL}/query', {
+{`const res = await fetch('${'/api'}/query', {
   method: 'POST',
   headers: {
     'x-api-key': '${user.anonKey ? user.anonKey.substring(0, 20) + '...' : 'YOUR_ANON_KEY'}',

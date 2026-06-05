@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: muwandb-frontend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npx serve -s dist -l 3001
+    envVars:
+      - key: BACKEND_URL
+        sync: false
