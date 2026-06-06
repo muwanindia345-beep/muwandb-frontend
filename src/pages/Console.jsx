@@ -12,18 +12,28 @@ export default function Console({ user }) {
   const [history, setHistory] = useState([])
 
   const run = async () => {
-    if (!query.trim() || !dbPassword) return
+    if (!query.trim() || !dbPassword) {
+      setResult({ success: false, error: 'Query aur DB Password dono required hain!' })
+      return
+    }
+
+    const key = keyType === 'secret' ? user?.secretKey : user?.anonKey
+    if (!key) {
+      setResult({ success: false, error: 'API Key nahi mili! Logout karke dobara login karo.' })
+      return
+    }
+
     setLoading(true)
     try {
       const headers = { 'Content-Type': 'application/json' }
-      if (keyType === 'secret') headers['x-secret-key'] = user.secretKey
-      else headers['x-api-key'] = user.anonKey
+      if (keyType === 'secret') headers['x-secret-key'] = key
+      else headers['x-api-key'] = key
 
       const { data } = await axios.post(API + '/query', { query, dbPassword }, { headers })
       setResult({ success: true, data })
       setHistory(h => [{ query, result: data.result, time: new Date().toLocaleTimeString() }, ...h.slice(0, 9)])
     } catch (e) {
-      setResult({ success: false, error: e.response?.data?.error || 'Error' })
+      setResult({ success: false, error: e.response?.data?.error || 'Network error - check connection' })
     }
     setLoading(false)
   }
@@ -41,10 +51,18 @@ export default function Console({ user }) {
   return (
     <div className="container" style={{ padding: '32px 16px' }}>
       <h1 style={{ fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, marginBottom: '4px' }}>💻 Query Console</h1>
-      <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '24px' }}>Run MQL queries on your encrypted database</p>
+      <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>Run MQL queries on your encrypted database</p>
+
+      {/* Key status */}
+      <div style={{ padding: '10px 14px', background: user?.secretKey ? '#10b98122' : '#ef444422',
+        borderRadius: '8px', fontSize: '13px', marginBottom: '16px',
+        color: user?.secretKey ? 'var(--green)' : 'var(--red)', border: '1px solid',
+        borderColor: user?.secretKey ? 'var(--green)' : 'var(--red)' }}>
+        {user?.secretKey ? '✅ API Keys loaded — ready to query!' : '❌ Keys missing — logout karke dobara login karo'}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-        {/* Left - Query editor */}
+        {/* Left */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className="card">
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
@@ -56,7 +74,17 @@ export default function Console({ user }) {
                 </button>
               ))}
             </div>
-            <input placeholder="Database Password" type="password" value={dbPassword}
+
+            {/* Show which key is being used */}
+            <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--accent2)',
+              background: 'var(--bg3)', padding: '8px', borderRadius: '6px', marginBottom: '12px',
+              wordBreak: 'break-all' }}>
+              {keyType === 'secret'
+                ? (user?.secretKey ? user.secretKey.substring(0, 30) + '...' : 'No key')
+                : (user?.anonKey ? user.anonKey.substring(0, 30) + '...' : 'No key')}
+            </div>
+
+            <input placeholder="Database Password 🔑" type="password" value={dbPassword}
               onChange={e => setDbPassword(e.target.value)} style={{ marginBottom: '12px' }} />
             <textarea value={query} onChange={e => setQuery(e.target.value)}
               placeholder="Enter MQL query...&#10;e.g. SELECT * FROM users"
@@ -87,9 +115,8 @@ export default function Console({ user }) {
           </div>
         </div>
 
-        {/* Right - Result + History */}
+        {/* Right */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Result */}
           <div className="card" style={{ background: '#0d0d14', minHeight: '200px' }}>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
               {['#ef4444', '#f59e0b', '#10b981'].map(c => (
@@ -111,7 +138,6 @@ export default function Console({ user }) {
             )}
           </div>
 
-          {/* History */}
           {history.length > 0 && (
             <div className="card">
               <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: 'var(--text2)' }}>History</h3>
