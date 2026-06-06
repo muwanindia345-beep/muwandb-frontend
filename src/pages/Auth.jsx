@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 
-const API = '/api'
+const API = import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com'
 
 export default function Auth({ login }) {
   const [mode, setMode] = useState('login')
@@ -25,7 +25,13 @@ export default function Auth({ login }) {
       if (mode === 'register') {
         setKeys({ anonKey: data.anonKey, secretKey: data.secretKey })
       } else {
-        login({ username: data.username, dbName: data.dbName, anonKey: data.anonKey, secretKey: data.secretKey })
+        // Login - keys bhi save karo
+        login({
+          username: data.username,
+          dbName: data.dbName,
+          anonKey: data.anonKey,
+          secretKey: data.secretKey
+        })
       }
     } catch (e) {
       setError(e.response?.data?.error || 'Something went wrong')
