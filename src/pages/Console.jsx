@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import axios from 'axios'
 
 const API = import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com'
-const DOCS_URL = 'https://muwandb-frontend.onrender.com/MuwanDB_Guide.pdf'
+const DOCS_URL = '/MuwanDB_Guide.pdf'
 
 const SHORTCUTS = [
   { label: 'Show Tables', query: 'SHOW TABLES', color: '#06b6d4' },
@@ -120,12 +120,12 @@ export default function Console({ user }) {
 
   const run = async () => {
     if (!query.trim() || !dbPassword) {
-      setResult({ success: false, error: 'Query aur DB Password dono required hain!' })
+      setResult({ success: false, error: 'Query and DB Password are both required!' })
       return
     }
     const key = keyType === 'secret' ? user?.secretKey : user?.anonKey
     if (!key) {
-      setResult({ success: false, error: 'API Key missing — logout karke login karo.' })
+      setResult({ success: false, error: 'API Key missing — please logout and login again.' })
       return
     }
     setLoading(true)
@@ -197,7 +197,6 @@ export default function Console({ user }) {
 
   return (
     <div className="container" style={{ padding: '24px 16px' }}>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
         <div>
           <h1 style={{ fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, marginBottom: '2px' }}>💻 Query Console</h1>
@@ -209,12 +208,10 @@ export default function Console({ user }) {
         </a>
       </div>
 
-      {/* Key status */}
       <div style={{ padding: '10px 14px', background: user?.secretKey ? '#10b98122' : '#ef444422', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', color: user?.secretKey ? 'var(--green)' : 'var(--red)', border: '1px solid', borderColor: user?.secretKey ? 'var(--green)' : 'var(--red)' }}>
-        {user?.secretKey ? '✅ API Keys loaded — ready to query!' : '❌ Keys missing — logout karke dobara login karo'}
+        {user?.secretKey ? '✅ API Keys loaded — ready to query!' : '❌ Keys missing — please logout and login again'}
       </div>
 
-      {/* Tabs: MQL / SDK Examples */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: 'var(--bg2)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border)', width: 'fit-content' }}>
         {['mql', 'sdk'].map(t => (
           <button key={t} onClick={() => setActiveTab(t)}
@@ -226,10 +223,8 @@ export default function Console({ user }) {
 
       {activeTab === 'mql' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-          {/* Left panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="card" style={{ padding: '16px' }}>
-              {/* Key selector */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                 {['secret', 'anon'].map(k => (
                   <button key={k} onClick={() => setKeyType(k)}
@@ -256,13 +251,12 @@ export default function Console({ user }) {
               </button>
             </div>
 
-            {/* Quick Queries */}
             <div className="card" style={{ padding: '16px' }}>
               <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: 'var(--text2)' }}>⚡ Quick Queries</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 {SHORTCUTS.map(s => (
                   <button key={s.query} onClick={() => setQuery(s.query)} style={{
-                    background: 'var(--bg3)', border: `1px solid var(--border)`, borderRadius: '6px',
+                    background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '6px',
                     padding: '6px 10px', color: 'var(--text2)', fontSize: '11px', fontFamily: 'monospace',
                     textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                   }}
@@ -276,9 +270,7 @@ export default function Console({ user }) {
             </div>
           </div>
 
-          {/* Right panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Output */}
             <div className="card" style={{ background: '#0a0a14', minHeight: '220px', padding: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -296,7 +288,6 @@ export default function Console({ user }) {
               {renderOutput()}
             </div>
 
-            {/* History */}
             {history.length > 0 && (
               <div className="card" style={{ padding: '16px' }}>
                 <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: 'var(--text2)' }}>🕐 History</h3>
@@ -304,8 +295,7 @@ export default function Console({ user }) {
                   {history.map((h, i) => (
                     <div key={i} onClick={() => setQuery(h.query)} style={{
                       background: 'var(--bg3)', borderRadius: '6px', padding: '7px 10px',
-                      cursor: 'pointer', border: `1px solid ${h.ok ? '#10b98133' : '#ef444433'}`,
-                      transition: 'all 0.15s'
+                      cursor: 'pointer', border: `1px solid ${h.ok ? '#10b98133' : '#ef444433'}`, transition: 'all 0.15s'
                     }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = h.ok ? '#10b981' : '#ef4444'}
                       onMouseLeave={e => e.currentTarget.style.borderColor = h.ok ? '#10b98133' : '#ef444433'}>
@@ -321,7 +311,6 @@ export default function Console({ user }) {
           </div>
         </div>
       ) : (
-        /* SDK Examples Tab */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <p style={{ color: 'var(--text2)', fontSize: '13px', marginBottom: '4px' }}>
@@ -350,9 +339,12 @@ export default function Console({ user }) {
                 {SDK_EXAMPLES[sdkTab].code}
               </pre>
             </div>
+            {/* Fix 2: English description */}
             <div className="card" style={{ marginTop: '12px', padding: '14px', background: '#06b6d411', border: '1px solid #06b6d433' }}>
               <p style={{ color: '#06b6d4', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>📄 Full Documentation</p>
-              <p style={{ color: 'var(--text2)', fontSize: '12px', marginBottom: '10px' }}>Saari queries, operators, RLS setup aur examples PDF mein hain.</p>
+              <p style={{ color: 'var(--text2)', fontSize: '12px', marginBottom: '10px' }}>
+                Complete reference for all queries, filter operators, RLS setup, REST API endpoints, and real-world examples.
+              </p>
               <a href={DOCS_URL} target="_blank" rel="noreferrer"
                 style={{ display: 'inline-block', padding: '7px 16px', background: '#7c3aed', borderRadius: '7px', color: '#fff', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
                 📄 Download MuwanDB Guide PDF

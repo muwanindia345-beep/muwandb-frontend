@@ -1,15 +1,15 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 
-const DOCS_URL = 'https://muwandb-frontend.onrender.com/MuwanDB_Guide.pdf'
+const DOCS_URL = '/MuwanDB_Guide.pdf'
 
 export default function Landing() {
   const features = [
-    { icon: '🔐', title: 'AES-256 Encryption', desc: 'Your data is encrypted at rest. Even we cannot see it.' },
+    { icon: '🔐', title: 'AES-256 Encryption', desc: 'Your data is encrypted at rest. Even we cannot read it.' },
     { icon: '🗝️', title: 'Anon + Secret Keys', desc: 'Two-key system like Supabase. Frontend safe, backend powerful.' },
     { icon: '🛡️', title: 'Row Level Security', desc: 'Users only see their own data. Automatic query filtering.' },
     { icon: '⚡', title: 'Custom Query Engine', desc: 'MQL syntax — CREATE, INSERT, SELECT, UPDATE, DELETE, COUNT.' },
-    { icon: '🌐', title: '24/7 REST API', desc: 'Connect any app — React, Node.js, Python, anything.' },
+    { icon: '🌐', title: '24/7 REST API', desc: 'Connect any app — React, Node.js, Python, or anything else.' },
     { icon: '🏗️', title: 'Zero Dependencies', desc: 'No MongoDB, no PostgreSQL. Pure custom C++ engine.' },
   ]
 
@@ -116,18 +116,28 @@ await db.from('users')
         </div>
       </div>
 
-      {/* Docs CTA */}
+      {/* Fix 1: Docs CTA — no overlap, proper spacing */}
       <div className="container" style={{ padding: '0 16px 60px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #7c3aed22, #06b6d422)', border: '1px solid #7c3aed44', borderRadius: '16px', padding: '40px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>📄</div>
-          <h2 style={{ fontSize: 'clamp(18px, 3vw, 26px)', fontWeight: 700, marginBottom: '8px' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #7c3aed22, #06b6d422)',
+          border: '1px solid #7c3aed44',
+          borderRadius: '16px',
+          padding: '48px 24px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{ fontSize: '40px', lineHeight: 1 }}>📄</div>
+          <h2 style={{ fontSize: 'clamp(18px, 3vw, 26px)', fontWeight: 700, margin: 0 }}>
             Complete Documentation
           </h2>
-          <p style={{ color: 'var(--text2)', marginBottom: '20px', fontSize: '14px', maxWidth: '400px', margin: '0 auto 20px' }}>
-            Full guide — setup, SDK, MQL queries, RLS, REST API, error codes aur real world examples.
+          <p style={{ color: 'var(--text2)', fontSize: '14px', maxWidth: '480px', margin: 0, lineHeight: 1.6 }}>
+            A complete reference guide covering setup, SDK usage, MQL query language, Row Level Security, REST API endpoints, error codes, and real-world integration examples.
           </p>
           <a href={DOCS_URL} target="_blank" rel="noreferrer"
-            className="btn btn-primary" style={{ fontSize: '15px', padding: '12px 28px' }}>
+            className="btn btn-primary" style={{ fontSize: '15px', padding: '12px 28px', marginTop: '4px' }}>
             📥 Download MuwanDB Guide PDF
           </a>
         </div>
