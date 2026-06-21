@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 
 const API = import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com'
+const WS_URL = (import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com').replace('https', 'wss').replace('http', 'ws')
 
 const Icons = {
   key: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>,
@@ -14,6 +15,8 @@ const Icons = {
   db: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
   eye: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
   eyeOff: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
+  phone: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>,
+  monitor: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
 }
 
 export default function Dashboard({ user, login }) {
@@ -24,6 +27,47 @@ export default function Dashboard({ user, login }) {
   const [modalPass, setModalPass] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [modalError, setModalError] = useState('')
+  const [syncPopup, setSyncPopup] = useState(null)
+  const wsRef = useRef(null)
+
+  useEffect(() => {
+    if (!user?.username) return
+
+    const ws = new WebSocket(WS_URL + '/ws?apiKey=' + user.anonKey)
+    wsRef.current = ws
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'KEYS_REFRESHED' && data.username === user.username && data.source === 'app') {
+          setSyncPopup({
+            anonKey: data.anonKey,
+            secretKey: data.secretKey,
+            source: 'App'
+          })
+        }
+      } catch {}
+    }
+
+    ws.onerror = () => {}
+    ws.onclose = () => {}
+
+    return () => ws.close()
+  }, [user?.username])
+
+  const acceptSync = () => {
+    if (syncPopup) {
+      login({
+        username: user.username,
+        dbName: user.dbName,
+        anonKey: syncPopup.anonKey,
+        secretKey: syncPopup.secretKey
+      })
+      setRefreshMsg('Keys synced from App!')
+      setSyncPopup(null)
+      setTimeout(() => setRefreshMsg(''), 3000)
+    }
+  }
 
   const copy = (val, label) => {
     if (!val) return
@@ -47,10 +91,12 @@ export default function Dashboard({ user, login }) {
       const { data } = await axios.post(API + '/auth/login', {
         username: user.username,
         password: modalPass
+      }, {
+        headers: { 'x-source': 'web' }
       })
       login({ username: data.username, dbName: data.dbName, anonKey: data.anonKey, secretKey: data.secretKey })
       setShowModal(false)
-      setRefreshMsg('✅ Keys refreshed!')
+      setRefreshMsg('Keys refreshed!')
     } catch (e) {
       setModalError(e.response?.data?.error || 'Wrong password')
     }
@@ -66,7 +112,28 @@ export default function Dashboard({ user, login }) {
   return (
     <div className="container" style={{ padding: '32px 16px' }}>
 
-      {/* Custom Password Modal */}
+      {/* Sync Popup from App */}
+      {syncPopup && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '360px', background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>📱</div>
+            <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>Keys Refreshed via App!</h3>
+            <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '20px' }}>
+              MuwanDB App ne keys refresh ki hain. Web pe bhi sync karein?
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setSyncPopup(null)} className="btn btn-outline" style={{ flex: 1 }}>
+                Ignore
+              </button>
+              <button onClick={acceptSync} className="btn btn-primary" style={{ flex: 1 }}>
+                Sync Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refresh Modal */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div className="card" style={{ width: '100%', maxWidth: '360px', background: 'var(--bg2)', border: '1px solid var(--border)' }}>
@@ -75,7 +142,6 @@ export default function Dashboard({ user, login }) {
             <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '20px' }}>
               Enter your password to generate new keys
             </p>
-
             <div style={{ position: 'relative', marginBottom: '12px' }}>
               <input
                 type={showPass ? 'text' : 'password'}
@@ -91,17 +157,13 @@ export default function Dashboard({ user, login }) {
                 {showPass ? Icons.eyeOff : Icons.eye}
               </button>
             </div>
-
             {modalError && (
               <div style={{ padding: '8px 12px', background: '#ef444422', borderRadius: '8px', color: 'var(--red)', fontSize: '13px', marginBottom: '12px' }}>
                 {modalError}
               </div>
             )}
-
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowModal(false)} className="btn btn-outline" style={{ flex: 1 }}>
-                Cancel
-              </button>
+              <button onClick={() => setShowModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
               <button onClick={confirmRefresh} disabled={refreshing} className="btn btn-primary" style={{ flex: 1 }}>
                 {refreshing ? 'Refreshing...' : 'Confirm'}
               </button>
@@ -117,14 +179,12 @@ export default function Dashboard({ user, login }) {
         </p>
       </div>
 
-      {/* Status */}
       <div className="card" style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 8px var(--green)', flexShrink: 0 }} />
         <span style={{ fontWeight: 600 }}>Database Online</span>
         <span className="tag tag-green">Active</span>
       </div>
 
-      {/* API Keys */}
       <div className="card" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontWeight: 700, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -160,7 +220,7 @@ export default function Dashboard({ user, login }) {
                 </div>
               </div>
               <div style={{ fontFamily: 'monospace', fontSize: '11px', color: val ? 'var(--accent2)' : 'var(--text2)', wordBreak: 'break-all', marginBottom: '4px' }}>
-                {val ? val.substring(0, 40) + '...' : '⚠️ Session expired — click Refresh Keys'}
+                {val ? val.substring(0, 40) + '...' : 'Session expired — click Refresh Keys'}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text2)' }}>{desc}</div>
             </div>
@@ -168,7 +228,6 @@ export default function Dashboard({ user, login }) {
         </div>
       </div>
 
-      {/* Quick actions */}
       <div className="grid-2" style={{ marginBottom: '24px' }}>
         {cards.map(c => (
           <Link key={c.to} to={c.to} style={{ textDecoration: 'none' }}>
@@ -181,31 +240,6 @@ export default function Dashboard({ user, login }) {
             </div>
           </Link>
         ))}
-      </div>
-
-      {/* Code snippet */}
-      <div className="card" style={{ background: '#0d0d14' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600 }}>Quick Connect</span>
-          <button onClick={() => copy(`const res = await fetch('/api/query', {\n  method: 'POST',\n  headers: {\n    'x-api-key': '${user.anonKey}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    query: 'SELECT * FROM your_table',\n    dbPassword: 'your_db_password',\n    userId: currentUser.id\n  })\n})`, 'snippet')} className="btn btn-outline" style={{ fontSize: '12px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {copied === 'snippet' ? Icons.check : Icons.copy}
-            {copied === 'snippet' ? 'Copied!' : 'Copy Code'}
-          </button>
-        </div>
-        <pre style={{ fontSize: 'clamp(10px, 2vw, 12px)', color: '#a855f7', overflowX: 'auto', lineHeight: 1.8 }}>
-{`const res = await fetch('/api/query', {
-  method: 'POST',
-  headers: {
-    'x-api-key': '${user.anonKey ? user.anonKey.substring(0, 20) + '...' : 'YOUR_ANON_KEY'}',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    query: 'SELECT * FROM your_table',
-    dbPassword: 'your_db_password',
-    userId: currentUser.id
-  })
-})`}
-        </pre>
       </div>
     </div>
   )
