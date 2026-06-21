@@ -88,7 +88,7 @@ export default function Dashboard({ user, login }) {
     setRefreshing(true)
     setModalError('')
     try {
-      const { data } = await axios.post(API + '/auth/login', {
+      const { data } = await axios.post(API + '/auth/refresh-keys', {
         username: user.username,
         password: modalPass
       }, {
