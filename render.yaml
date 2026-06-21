@@ -3,7 +3,7 @@ services:
     name: muwandb-frontend
     runtime: node
     buildCommand: npm install && npm run build
-    startCommand: npx serve -s dist -l 3001
+    startCommand: node server.js
     envVars:
-      - key: BACKEND_URL
+      - key: VITE_API_URL
         sync: false
