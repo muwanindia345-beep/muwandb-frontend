@@ -67,7 +67,7 @@ export default function Auth({ login }) {
           </div>
         ))}
 
-        <button onClick={() => login({ username: form.username, dbName: form.dbName, anonKey: keys.anonKey, secretKey: keys.secretKey })}
+        <button onClick={() => login({ username: form.username, dbName: keys.dbName || form.dbName, activeProject: keys.activeProject, projects: keys.projects || [], anonKey: keys.anonKey, secretKey: keys.secretKey })}
           className="btn btn-primary" style={{ width: '100%', marginTop: '8px' }}>
           Go to Dashboard →
         </button>
