@@ -143,7 +143,7 @@ function QueryTab({ user, activeProject }) {
     )
   }
 
-  return (
+return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="card" style={{ padding: '16px' }}>
@@ -247,6 +247,7 @@ function QueryTab({ user, activeProject }) {
   )
 }
 
+
 export default function Console({ user, login }) {
   const [activeTab, setActiveTab]         = useState('mql')
   const [queryTabs, setQueryTabs]         = useState([{ id: 1, label: 'Query 1' }])
@@ -272,7 +273,7 @@ export default function Console({ user, login }) {
     setSwitchLoading(true); setSwitchError('')
     try {
       const { data } = await axios.post(
-        (import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com') + '/auth/project/switch',
+        (import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com'\) + '/auth/project/switch',
         { username: user.username, password: switchPass, projectName }
       )
       setActiveProject({ projectName: data.projectName, anonKey: data.anonKey, secretKey: data.secretKey })
@@ -336,8 +337,33 @@ export default function Console({ user, login }) {
                 </button>
               ))}
             </div>
-            <button onClick={() => { setShowSwitcher(false); setSwitchP
-{/* API key status */}
+            <button onClick={() => { setShowSwitcher(false); setSwitchPass('') }} className="btn btn-outline" style={{ width: '100%' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <div>
+          <h1 style={{ fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, marginBottom: '2px' }}>💻 Query Console</h1>
+          <p style={{ color: 'var(--text2)', fontSize: '13px' }}>MQL & SQL — run any query on your encrypted database</p>
+        </div>
+        {/* Docs PDF + Project Switcher — same row */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <a href={DOCS_URL} target="_blank" rel="noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: '#7c3aed22', border: '1px solid #7c3aed55', borderRadius: '8px', color: '#a855f7', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
+            📄 Docs PDF
+          </a>
+          <button onClick={() => setShowSwitcher(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: '#06b6d422', border: '1px solid #06b6d455', borderRadius: '8px', color: '#06b6d4', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            📁 {activeProject.projectName} 🔁
+          </button>
+        </div>
+      </div>
+
+      {/* API key status */}
       <div style={{ padding: '10px 14px', background: activeProject.secretKey ? '#10b98122' : '#ef444422', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', color: activeProject.secretKey ? 'var(--green)' : 'var(--red)', border: '1px solid', borderColor: activeProject.secretKey ? 'var(--green)' : 'var(--red)' }}>
         {activeProject.secretKey
           ? `✅ Project: ${activeProject.projectName} — ready to query!`
