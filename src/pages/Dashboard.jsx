@@ -37,6 +37,12 @@ export default function Dashboard({ user, login }) {
   const [newProjectKeys, setNewProjectKeys] = useState(null)
   const [projects, setProjects] = useState(user.projects || [user.activeProject || user.dbName])
   const [keyCopied, setKeyCopied] = useState('')
+  const [showKeysModal, setShowKeysModal] = useState(false)
+  const [showKeysProject, setShowKeysProject] = useState(null)
+  const [showKeysData, setShowKeysData] = useState(null)
+  const [showKeysPass, setShowKeysPass] = useState('')
+  const [showKeysError, setShowKeysError] = useState('')
+  const [showKeysLoading, setShowKeysLoading] = useState(false)
 
   const wsRef = useRef(null)
 
@@ -109,6 +115,30 @@ export default function Dashboard({ user, login }) {
     setShowProjectModal(true)
   }
 
+  const openShowKeys = (projectName) => {
+    setShowKeysProject(projectName)
+    setShowKeysData(null)
+    setShowKeysPass('')
+    setShowKeysError('')
+    setShowKeysModal(true)
+  }
+
+  const fetchProjectKeys = async () => {
+    if (!showKeysPass) { setShowKeysError('Password required'); return }
+    setShowKeysLoading(true); setShowKeysError('')
+    try {
+      const { data } = await axios.post(API + '/auth/project/switch', {
+        username: user.username,
+        password: showKeysPass,
+        projectName: showKeysProject
+      })
+      setShowKeysData({ anonKey: data.anonKey, secretKey: data.secretKey })
+    } catch (e) {
+      setShowKeysError(e.response?.data?.error || 'Wrong password')
+    }
+    setShowKeysLoading(false)
+  }
+
   const createProject = async () => {
     if (!projectForm.projectName || !projectForm.password)
       return setProjectError('Project name and password required')
@@ -177,6 +207,58 @@ export default function Dashboard({ user, login }) {
                 {refreshing ? 'Refreshing...' : 'Confirm'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      
+      {/* Show Keys Modal */}
+      {showKeysModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
+            {!showKeysData ? (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>🔑</div>
+                <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>Show API Keys</h3>
+                <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '16px' }}>
+                  Project: <strong>{showKeysProject}</strong>
+                </p>
+                <input type="password" placeholder="Account password" value={showKeysPass}
+                  onChange={e => { setShowKeysPass(e.target.value); setShowKeysError('') }}
+                  onKeyDown={e => e.key === 'Enter' && fetchProjectKeys()}
+                  style={{ width: '100%', marginBottom: '12px', boxSizing: 'border-box' }} autoFocus />
+                {showKeysError && <div style={{ padding: '8px', background: '#ef444422', borderRadius: '6px', color: 'var(--red)', fontSize: '12px', marginBottom: '10px' }}>{showKeysError}</div>}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setShowKeysModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+                  <button onClick={fetchProjectKeys} disabled={showKeysLoading} className="btn btn-primary" style={{ flex: 1 }}>
+                    {showKeysLoading ? 'Loading...' : '👁 Show Keys'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>🔓</div>
+                <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '16px' }}>{showKeysProject} Keys</h3>
+                {[['🔓 Anon Key', showKeysData.anonKey, 'ak', 'yellow', 'Frontend Safe'],
+                  ['🔒 Secret Key', showKeysData.secretKey, 'sk', 'purple', 'Backend Only']].map(([label, val, id, color, tag]) => (
+                  <div key={id} style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600 }}>{label}</span>
+                      <span className={`tag tag-${color}`}>{tag}</span>
+                    </div>
+                    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', fontSize: '11px', wordBreak: 'break-all', fontFamily: 'monospace', color: 'var(--accent2)', marginBottom: '6px' }}>
+                      {val}
+                    </div>
+                    <button onClick={() => copyKey(val, id)} className="btn btn-outline" style={{ width: '100%', fontSize: '12px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                      {keyCopied === id ? '✅ Copied!' : '📋 Copy'}
+                    </button>
+                  </div>
+                ))}
+                <button onClick={() => setShowKeysModal(false)} className="btn btn-primary" style={{ width: '100%', marginTop: '4px' }}>
+                  Done
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -341,6 +423,9 @@ export default function Dashboard({ user, login }) {
                 <span style={{ fontWeight: 600, fontSize: '14px', color: (user.activeProject || user.dbName) === p ? 'var(--accent2)' : 'var(--text)' }}>{p}</span>
                 {(user.activeProject || user.dbName) === p && <span className="tag tag-green" style={{ fontSize: '10px' }}>Active</span>}
               </div>
+              <button onClick={() => openShowKeys(p)} className="btn btn-outline" style={{ fontSize: '11px', padding: '4px 8px' }}>
+                🔑 Keys
+              </button>
             </div>
           ))}
         </div>
