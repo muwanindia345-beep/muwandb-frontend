@@ -15,8 +15,8 @@ const Icons = {
   db: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
   eye: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
   eyeOff: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
-  phone: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>,
-  monitor: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
+  plus: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  folder: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
 }
 
 export default function Dashboard({ user, login }) {
@@ -28,41 +28,38 @@ export default function Dashboard({ user, login }) {
   const [showPass, setShowPass] = useState(false)
   const [modalError, setModalError] = useState('')
   const [syncPopup, setSyncPopup] = useState(null)
+
+  // Project create state
+  const [showProjectModal, setShowProjectModal] = useState(false)
+  const [projectForm, setProjectForm] = useState({ projectName: '', password: '' })
+  const [projectLoading, setProjectLoading] = useState(false)
+  const [projectError, setProjectError] = useState('')
+  const [newProjectKeys, setNewProjectKeys] = useState(null)
+  const [projects, setProjects] = useState(user.projects || [user.activeProject || user.dbName])
+  const [keyCopied, setKeyCopied] = useState('')
+
   const wsRef = useRef(null)
 
   useEffect(() => {
     if (!user?.username) return
-
     const ws = new WebSocket(WS_URL + '/ws?apiKey=' + user.anonKey)
     wsRef.current = ws
-
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
         if (data.type === 'KEYS_REFRESHED' && data.username === user.username && data.source === 'app') {
-          setSyncPopup({
-            anonKey: data.anonKey,
-            secretKey: data.secretKey,
-            source: 'App'
-          })
+          setSyncPopup({ anonKey: data.anonKey, secretKey: data.secretKey, source: 'App' })
         }
       } catch {}
     }
-
     ws.onerror = () => {}
     ws.onclose = () => {}
-
     return () => ws.close()
   }, [user?.username])
 
   const acceptSync = () => {
     if (syncPopup) {
-      login({
-        username: user.username,
-        dbName: user.dbName,
-        anonKey: syncPopup.anonKey,
-        secretKey: syncPopup.secretKey
-      })
+      login({ ...user, anonKey: syncPopup.anonKey, secretKey: syncPopup.secretKey })
       setRefreshMsg('Keys synced from App!')
       setSyncPopup(null)
       setTimeout(() => setRefreshMsg(''), 3000)
@@ -76,25 +73,26 @@ export default function Dashboard({ user, login }) {
     setTimeout(() => setCopied(''), 2000)
   }
 
+  const copyKey = (val, label) => {
+    navigator.clipboard.writeText(val)
+    setKeyCopied(label)
+    setTimeout(() => setKeyCopied(''), 2000)
+  }
+
   const openRefreshModal = () => {
-    setModalPass('')
-    setModalError('')
-    setShowPass(false)
-    setShowModal(true)
+    setModalPass(''); setModalError(''); setShowPass(false); setShowModal(true)
   }
 
   const confirmRefresh = async () => {
     if (!modalPass) { setModalError('Password required'); return }
-    setRefreshing(true)
-    setModalError('')
+    setRefreshing(true); setModalError('')
     try {
       const { data } = await axios.post(API + '/auth/refresh-keys', {
         username: user.username,
-        password: modalPass
-      }, {
-        headers: { 'x-source': 'web' }
-      })
-      login({ username: data.username, dbName: data.dbName, anonKey: data.anonKey, secretKey: data.secretKey })
+        password: modalPass,
+        projectName: user.activeProject || user.dbName
+      }, { headers: { 'x-source': 'web' } })
+      login({ ...user, anonKey: data.anonKey, secretKey: data.secretKey })
       setShowModal(false)
       setRefreshMsg('Keys refreshed!')
     } catch (e) {
@@ -104,6 +102,31 @@ export default function Dashboard({ user, login }) {
     setTimeout(() => setRefreshMsg(''), 3000)
   }
 
+  const openProjectModal = () => {
+    setProjectForm({ projectName: '', password: '' })
+    setProjectError('')
+    setNewProjectKeys(null)
+    setShowProjectModal(true)
+  }
+
+  const createProject = async () => {
+    if (!projectForm.projectName || !projectForm.password)
+      return setProjectError('Project name and password required')
+    setProjectLoading(true); setProjectError('')
+    try {
+      const { data } = await axios.post(API + '/auth/project/create', {
+        username: user.username,
+        password: projectForm.password,
+        projectName: projectForm.projectName
+      })
+      setNewProjectKeys({ anonKey: data.anonKey, secretKey: data.secretKey, projectName: data.projectName })
+      setProjects(prev => [...prev, data.projectName])
+    } catch (e) {
+      setProjectError(e.response?.data?.error || 'Something went wrong')
+    }
+    setProjectLoading(false)
+  }
+
   const cards = [
     { icon: Icons.console, title: 'Query Console', desc: 'Run MQL queries on your database', to: '/console', color: '#7c3aed' },
     { icon: Icons.settings, title: 'Settings', desc: 'Manage RLS rules and account', to: '/settings', color: '#10b981' },
@@ -111,57 +134,43 @@ export default function Dashboard({ user, login }) {
 
   return (
     <div className="container" style={{ padding: '32px 16px' }}>
-
-      {/* Sync Popup from App */}
+{/* Sync Popup */}
       {syncPopup && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '360px', background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '360px' }}>
             <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>📱</div>
             <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>Keys Refreshed via App!</h3>
             <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '20px' }}>
               MuwanDB App ne keys refresh ki hain. Web pe bhi sync karein?
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setSyncPopup(null)} className="btn btn-outline" style={{ flex: 1 }}>
-                Ignore
-              </button>
-              <button onClick={acceptSync} className="btn btn-primary" style={{ flex: 1 }}>
-                Sync Now
-              </button>
+              <button onClick={() => setSyncPopup(null)} className="btn btn-outline" style={{ flex: 1 }}>Ignore</button>
+              <button onClick={acceptSync} className="btn btn-primary" style={{ flex: 1 }}>Sync Now</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Refresh Modal */}
+      {/* Refresh Keys Modal */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '360px', background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '360px' }}>
             <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>🔑</div>
             <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>Refresh API Keys</h3>
             <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '20px' }}>
               Enter your password to generate new keys
             </p>
             <div style={{ position: 'relative', marginBottom: '12px' }}>
-              <input
-                type={showPass ? 'text' : 'password'}
-                placeholder="Your password"
-                value={modalPass}
+              <input type={showPass ? 'text' : 'password'} placeholder="Your password" value={modalPass}
                 onChange={e => { setModalPass(e.target.value); setModalError('') }}
                 onKeyDown={e => e.key === 'Enter' && confirmRefresh()}
-                style={{ width: '100%', paddingRight: '40px', boxSizing: 'border-box' }}
-                autoFocus
-              />
+                style={{ width: '100%', paddingRight: '40px', boxSizing: 'border-box' }} autoFocus />
               <button onClick={() => setShowPass(p => !p)}
                 style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}>
                 {showPass ? Icons.eyeOff : Icons.eye}
               </button>
             </div>
-            {modalError && (
-              <div style={{ padding: '8px 12px', background: '#ef444422', borderRadius: '8px', color: 'var(--red)', fontSize: '13px', marginBottom: '12px' }}>
-                {modalError}
-              </div>
-            )}
+            {modalError && <div style={{ padding: '8px 12px', background: '#ef444422', borderRadius: '8px', color: 'var(--red)', fontSize: '13px', marginBottom: '12px' }}>{modalError}</div>}
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setShowModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
               <button onClick={confirmRefresh} disabled={refreshing} className="btn btn-primary" style={{ flex: 1 }}>
@@ -172,19 +181,84 @@ export default function Dashboard({ user, login }) {
         </div>
       )}
 
+      {/* Create Project Modal */}
+      {showProjectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
+            {!newProjectKeys ? (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>📁</div>
+                <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>New Project</h3>
+                <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '20px' }}>
+                  Har project ki apni isolated database aur API keys hongi
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+                  <input placeholder="Project name (e.g. luciagram, myapp)"
+                    value={projectForm.projectName}
+                    onChange={e => setProjectForm({ ...projectForm, projectName: e.target.value })} />
+                  <input type="password" placeholder="Your account password"
+                    value={projectForm.password}
+                    onChange={e => setProjectForm({ ...projectForm, password: e.target.value })}
+                    onKeyDown={e => e.key === 'Enter' && createProject()} />
+                </div>
+                {projectError && <div style={{ padding: '8px 12px', background: '#ef444422', borderRadius: '8px', color: 'var(--red)', fontSize: '13px', marginBottom: '12px' }}>{projectError}</div>}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setShowProjectModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
+                  <button onClick={createProject} disabled={projectLoading} className="btn btn-primary" style={{ flex: 1 }}>
+                    {projectLoading ? 'Creating...' : '✅ Confirm'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '28px', textAlign: 'center', marginBottom: '8px' }}>🎉</div>
+                <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>Project Created!</h3>
+                <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '13px', marginBottom: '4px' }}>
+                  <strong>{newProjectKeys.projectName}</strong>
+                </p>
+                <p style={{ textAlign: 'center', color: 'var(--red)', fontSize: '12px', marginBottom: '16px', fontWeight: 600 }}>
+                  ⚠️ Save these keys now! Won't be shown again.
+                </p>
+                {[['🔓 Anon Key', newProjectKeys.anonKey, 'anon', 'yellow', 'Frontend Safe'],
+                  ['🔒 Secret Key', newProjectKeys.secretKey, 'secret', 'purple', 'Backend Only']].map(([label, val, id, color, tag]) => (
+                  <div key={id} style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600 }}>{label}</span>
+                      <span className={`tag tag-${color}`}>{tag}</span>
+                    </div>
+                    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', fontSize: '11px', wordBreak: 'break-all', fontFamily: 'monospace', color: 'var(--accent2)', marginBottom: '6px' }}>
+                      {val}
+                    </div>
+                    <button onClick={() => copyKey(val, id)} className="btn btn-outline" style={{ width: '100%', fontSize: '12px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                      {keyCopied === id ? '✅ Copied!' : '📋 Copy'}
+                    </button>
+                  </div>
+                ))}
+                <button onClick={() => setShowProjectModal(false)} className="btn btn-primary" style={{ width: '100%', marginTop: '4px' }}>
+                  Done
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 800 }}>Welcome, {user.username} 👋</h1>
         <p style={{ color: 'var(--text2)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {Icons.db} Database: <span style={{ color: 'var(--accent2)', fontWeight: 600 }}>{user.dbName}</span>
+          {Icons.db} Project: <span style={{ color: 'var(--accent2)', fontWeight: 600 }}>{user.activeProject || user.dbName}</span>
         </p>
       </div>
 
+      {/* Online badge */}
       <div className="card" style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 8px var(--green)', flexShrink: 0 }} />
         <span style={{ fontWeight: 600 }}>Database Online</span>
         <span className="tag tag-green">Active</span>
       </div>
 
+      {/* API Keys */}
       <div className="card" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontWeight: 700, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -228,6 +302,7 @@ export default function Dashboard({ user, login }) {
         </div>
       </div>
 
+      {/* Nav Cards */}
       <div className="grid-2" style={{ marginBottom: '24px' }}>
         {cards.map(c => (
           <Link key={c.to} to={c.to} style={{ textDecoration: 'none' }}>
@@ -241,6 +316,36 @@ export default function Dashboard({ user, login }) {
           </Link>
         ))}
       </div>
+
+      {/* ── Projects Section ── */}
+      <div className="card" style={{ marginBottom: '24px', border: '1px solid #7c3aed55' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontWeight: 700, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {Icons.folder} Projects
+          </h2>
+          <button onClick={openProjectModal} className="btn btn-primary"
+            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {Icons.plus} New Project
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {projects.map(p => (
+            <div key={p} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'var(--bg3)', borderRadius: '8px', padding: '10px 14px',
+              border: `1px solid ${(user.activeProject || user.dbName) === p ? '#7c3aed' : 'var(--border)'}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>📁</span>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: (user.activeProject || user.dbName) === p ? 'var(--accent2)' : 'var(--text)' }}>{p}</span>
+                {(user.activeProject || user.dbName) === p && <span className="tag tag-green" style={{ fontSize: '10px' }}>Active</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   )
 }

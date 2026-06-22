@@ -1,0 +1,5 @@
+[33m3df9169[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fix: use /auth/refresh-keys instead of /auth/login
+[33mfba8bcc[m feat: WebSocket sync popup from App
+[33me0b3a4c[m feat: add change password UI in settings
+[33m8e2d712[m Google OAuth2 register/login flow
+[33med42fa2[m Fix SPA fallback

@@ -10,7 +10,7 @@ const SHORTCUTS = [
   { label: 'Insert Row',    query: "INSERT INTO users name email age active VALUES 'Saad' 'saad@email.com' 20 true", color: '#10b981' },
   { label: 'Select All',    query: 'SELECT * FROM users',                                                    color: '#a855f7' },
   { label: 'Select Cols',   query: 'SELECT id name FROM users WHERE active = true',                          color: '#a855f7' },
-  { label: 'Select LIMIT',  query: 'SELECT * FROM users LIMIT 10 OFFSET 0',                                 color: '#a855f7' },
+  { label: 'Select LIMIT',  query: 'SELECT * FROM users LIMIT 10 OFFSET 0',                                  color: '#a855f7' },
   { label: 'Select ORDER',  query: 'SELECT * FROM users ORDER BY age DESC',                                  color: '#a855f7' },
   { label: 'Multi Filter',  query: 'SELECT * FROM users WHERE age > 18 AND active = true',                   color: '#a855f7' },
   { label: 'Count Rows',    query: 'SELECT COUNT(*) FROM users',                                             color: '#f59e0b' },
@@ -35,9 +35,9 @@ const SDK_EXAMPLES = [
   { label: 'Delete Row',      code: `const { error } = await db\n  .from('users')\n  .eq('id', 1)\n  .delete();` },
   { label: 'Count / SUM',     code: `// Count\nconst { count } = await db.from('users').count().get();\n\n// SUM\nconst { data } = await db.from('orders').sum('price').get();\n\n// AVG\nconst { data } = await db.from('users').avg('age').get();` },
   { label: 'IN / BETWEEN',    code: `// IN\nawait db.from('users').in('city', ['Delhi','Mumbai']).get();\n\n// BETWEEN\nawait db.from('users').between('age', 18, 30).get();\n\n// SEARCH\nawait db.from('posts').search('caption', 'hello').get();` },
-  { label: 'Real-time',       code: `// Subscribe to table changes\nconst unsub = db.subscribe('messages', ({ event, data }) => {\n  console.log(event, data) // insert/update/delete\n})\n\n// Unsubscribe\nunsub()` },
+  { label: 'Real-time',       code: `const unsub = db.subscribe('messages', ({ event, data }) => {\n  console.log(event, data)\n})\nunsub()` },
   { label: 'Transactions',    code: `await db.begin();\ntry {\n  await db.from('wallet').eq('id', 1).update({ balance: 500 });\n  await db.from('wallet').eq('id', 2).update({ balance: 1500 });\n  await db.commit();\n} catch {\n  await db.rollback();\n}` },
-  { label: 'Raw MQL / SQL',   code: `// MQL style\nawait db.raw('SELECT * FROM users WHERE age > 18');\n\n// SQL style also works!\nawait db.raw('SELECT * FROM users WHERE age > 18;');\nawait db.raw(\`CREATE TABLE posts (\n  id SERIAL,\n  title VARCHAR(255),\n  age INTEGER\n);\`);` },
+  { label: 'Raw MQL / SQL',   code: `await db.raw('SELECT * FROM users WHERE age > 18');\nawait db.raw(\`CREATE TABLE posts (\n  id SERIAL,\n  title VARCHAR(255)\n);\`);` },
 ]
 
 function ResultTable({ data }) {
@@ -69,27 +69,27 @@ function ResultTable({ data }) {
   )
 }
 
-// ─── Single Query Tab ──────────────────────────────────────────────
-function QueryTab({ user, tabId }) {
-  const [query, setQuery]         = useState('')
+function QueryTab({ user, activeProject }) {
+  const [query, setQuery]           = useState('')
   const [dbPassword, setDbPassword] = useState('')
-  const [keyType, setKeyType]     = useState('secret')
-  const [result, setResult]       = useState(null)
-  const [loading, setLoading]     = useState(false)
-  const [history, setHistory]     = useState([])
-  const textareaRef               = useRef(null)
+  const [keyType, setKeyType]       = useState('secret')
+  const [result, setResult]         = useState(null)
+  const [loading, setLoading]       = useState(false)
+  const [history, setHistory]       = useState([])
+  const textareaRef                 = useRef(null)
+
+  const currentKey = keyType === 'secret' ? activeProject?.secretKey : activeProject?.anonKey
 
   const run = async () => {
     if (!query.trim() || !dbPassword) {
       setResult({ success: false, error: 'Query and DB Password required!' }); return
     }
-    const key = keyType === 'secret' ? user?.secretKey : user?.anonKey
-    if (!key) { setResult({ success: false, error: 'API Key missing' }); return }
+    if (!currentKey) { setResult({ success: false, error: 'API Key missing' }); return }
     setLoading(true)
     try {
       const headers = { 'Content-Type': 'application/json' }
-      if (keyType === 'secret') headers['x-secret-key'] = key
-      else headers['x-api-key'] = key
+      if (keyType === 'secret') headers['x-secret-key'] = currentKey
+      else headers['x-api-key'] = currentKey
       const { data } = await axios.post(API + '/query/raw', { query, dbPassword }, { headers })
       setResult({ success: true, data })
       setHistory(h => [{ query, time: new Date().toLocaleTimeString(), ok: true }, ...h.slice(0, 19)])
@@ -145,7 +145,6 @@ function QueryTab({ user, tabId }) {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-      {/* Left — Input */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="card" style={{ padding: '16px' }}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
@@ -158,9 +157,7 @@ function QueryTab({ user, tabId }) {
             ))}
           </div>
           <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--accent2)', background: 'var(--bg3)', padding: '6px 10px', borderRadius: '6px', marginBottom: '10px', wordBreak: 'break-all' }}>
-            {keyType === 'secret'
-              ? (user?.secretKey ? user.secretKey.substring(0, 30) + '...' : 'No key')
-              : (user?.anonKey ? user.anonKey.substring(0, 30) + '...' : 'No key')}
+            {currentKey ? currentKey.substring(0, 30) + '...' : 'No key'}
           </div>
           <input placeholder="Database Password 🔑" type="password" value={dbPassword}
             onChange={e => setDbPassword(e.target.value)} style={{ marginBottom: '10px' }} />
@@ -180,7 +177,6 @@ function QueryTab({ user, tabId }) {
           </div>
         </div>
 
-        {/* Quick Queries */}
         <div className="card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '10px', color: 'var(--text2)' }}>⚡ Quick Queries</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '300px', overflowY: 'auto' }}>
@@ -201,7 +197,6 @@ function QueryTab({ user, tabId }) {
         </div>
       </div>
 
-      {/* Right — Output + History */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="card" style={{ background: '#0a0a14', minHeight: '220px', padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -252,14 +247,43 @@ function QueryTab({ user, tabId }) {
   )
 }
 
-// ─── Main Console with Multi-Tabs ─────────────────────────────────
-export default function Console({ user }) {
-  const [activeTab, setActiveTab]   = useState('mql')
-  const [queryTabs, setQueryTabs]   = useState([{ id: 1, label: 'Query 1' }])
+export default function Console({ user, login }) {
+  const [activeTab, setActiveTab]         = useState('mql')
+  const [queryTabs, setQueryTabs]         = useState([{ id: 1, label: 'Query 1' }])
   const [activeQueryTab, setActiveQueryTab] = useState(1)
-  const [sdkTab, setSdkTab]         = useState(0)
-  const [copied, setCopied]         = useState(false)
-  const nextId                      = useRef(2)
+  const [sdkTab, setSdkTab]               = useState(0)
+  const [copied, setCopied]               = useState(false)
+  const nextId                            = useRef(2)
+
+  // Project switcher state
+  const [showSwitcher, setShowSwitcher]   = useState(false)
+  const [switchPass, setSwitchPass]       = useState('')
+  const [switchLoading, setSwitchLoading] = useState(false)
+  const [switchError, setSwitchError]     = useState('')
+  const [activeProject, setActiveProject] = useState({
+    projectName: user.activeProject || user.dbName,
+    anonKey: user.anonKey,
+    secretKey: user.secretKey
+  })
+  const [availableProjects, setAvailableProjects] = useState(user.projects || [user.activeProject || user.dbName])
+
+  const switchProject = async (projectName) => {
+    if (!switchPass) { setSwitchError('Password required'); return }
+    setSwitchLoading(true); setSwitchError('')
+    try {
+      const { data } = await axios.post(
+        (import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com'\) + '/auth/project/switch',
+        { username: user.username, password: switchPass, projectName }
+      )
+      setActiveProject({ projectName: data.projectName, anonKey: data.anonKey, secretKey: data.secretKey })
+      login({ ...user, activeProject: data.projectName, anonKey: data.anonKey, secretKey: data.secretKey, dbName: data.dbName })
+      setShowSwitcher(false)
+      setSwitchPass('')
+    } catch (e) {
+      setSwitchError(e.response?.data?.error || 'Wrong password')
+    }
+    setSwitchLoading(false)
+  }
 
   const addQueryTab = () => {
     const id = nextId.current++
@@ -282,21 +306,42 @@ export default function Console({ user }) {
 
   return (
     <div className="container" style={{ padding: '24px 16px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-        <div>
-          <h1 style={{ fontSize: 'clamp(18px, 4vw, 24px)', fontWeight: 800, marginBottom: '2px' }}>💻 Query Console</h1>
-          <p style={{ color: 'var(--text2)', fontSize: '13px' }}>MQL & SQL — run any query on your encrypted database</p>
-        </div>
-        <a href={DOCS_URL} target="_blank" rel="noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: '#7c3aed22', border: '1px solid #7c3aed55', borderRadius: '8px', color: '#a855f7', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-          📄 Docs PDF
-        </a>
-      </div>
 
-      {/* API key status */}
-      <div style={{ padding: '10px 14px', background: user?.secretKey ? '#10b98122' : '#ef444422', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', color: user?.secretKey ? 'var(--green)' : 'var(--red)', border: '1px solid', borderColor: user?.secretKey ? 'var(--green)' : 'var(--red)' }}>
-        {user?.secretKey ? '✅ API Keys loaded — ready to query!' : '❌ Keys missing — please logout and login again'}
+      {/* Project Switch Modal */}
+      {showSwitcher && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '360px' }}>
+            <div style={{ fontSize: '24px', textAlign: 'center', marginBottom: '8px' }}>🔁</div>
+            <h3 style={{ textAlign: 'center', fontWeight: 700, marginBottom: '4px' }}>Switch Project</h3>
+            <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: '12px', marginBottom: '16px' }}>
+              Enter password to load project keys
+            </p>
+            <input type="password" placeholder="Account password" value={switchPass}
+              onChange={e => { setSwitchPass(e.target.value); setSwitchError('') }}
+              style={{ width: '100%', marginBottom: '12px', boxSizing: 'border-box' }} autoFocus />
+            {switchError && <div style={{ padding: '8px', background: '#ef444422', borderRadius: '6px', color: 'var(--red)', fontSize: '12px', marginBottom: '10px' }}>{switchError}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+              {availableProjects.map(p => (
+                <button key={p} onClick={() => switchProject(p)} disabled={switchLoading}
+                  style={{
+                    padding: '10px 14px', borderRadius: '8px', textAlign: 'left', cursor: 'pointer',
+                    background: activeProject.projectName === p ? '#7c3aed22' : 'var(--bg3)',
+                    border: `1px solid ${activeProject.projectName === p ? '#7c3aed' : 'var(--border)'}`,
+                    color: activeProject.projectName === p ? 'var(--accent2)' : 'var(--text)',
+                    fontWeight: activeProject.projectName === p ? 700 : 400,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                  }}>
+                  <span>📁 {p}</span>
+                  {activeProject.projectName === p && <span style={{ fontSize: '11px' }}>✅ Active</span>}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => { setShowSwitcher(false); setSwitchP
+{/* API key status */}
+      <div style={{ padding: '10px 14px', background: activeProject.secretKey ? '#10b98122' : '#ef444422', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', color: activeProject.secretKey ? 'var(--green)' : 'var(--red)', border: '1px solid', borderColor: activeProject.secretKey ? 'var(--green)' : 'var(--red)' }}>
+        {activeProject.secretKey
+          ? `✅ Project: ${activeProject.projectName} — ready to query!`
+          : '❌ Keys missing — please logout and login again'}
       </div>
 
       {/* Main tab switcher */}
@@ -311,7 +356,6 @@ export default function Console({ user }) {
 
       {activeTab === 'mql' ? (
         <div>
-          {/* VS Code style query tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '8px', flexWrap: 'wrap' }}>
             {queryTabs.map(tab => (
               <div key={tab.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 12px', borderRadius: '6px 6px 0 0', background: activeQueryTab === tab.id ? 'var(--bg2)' : 'transparent', border: `1px solid ${activeQueryTab === tab.id ? 'var(--border)' : 'transparent'}`, borderBottom: 'none', cursor: 'pointer' }}
@@ -331,10 +375,9 @@ export default function Console({ user }) {
             }} title="New query tab">+ New Tab</button>
           </div>
 
-          {/* Render active tab */}
           {queryTabs.map(tab => (
             <div key={tab.id} style={{ display: activeQueryTab === tab.id ? 'block' : 'none' }}>
-              <QueryTab user={user} tabId={tab.id} />
+              <QueryTab user={user} activeProject={activeProject} />
             </div>
           ))}
         </div>

@@ -195,7 +195,7 @@ export default function App() {
         <Route path="/auth/callback" element={<GoogleCallback login={login} />} />
         <Route path="/auth/google-register" element={<GoogleRegister login={login} />} />
         <Route path="/dashboard" element={user ? <Dashboard user={user} login={login} /> : <Navigate to="/auth" />} />
-        <Route path="/console" element={user ? <Console user={user} /> : <Navigate to="/auth" />} />
+        <Route path="/console" element={user ? <Console user={user} login={login} /> : <Navigate to="/auth" />} />
         <Route path="/settings" element={user ? <Settings user={user} /> : <Navigate to="/auth" />} />
       </Routes>
     </BrowserRouter>
