@@ -273,7 +273,7 @@ export default function Console({ user, login }) {
     setSwitchLoading(true); setSwitchError('')
     try {
       const { data } = await axios.post(
-        (import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com'\) + '/auth/project/switch',
+        (import.meta.env.VITE_API_URL || 'https://muwandb-server.onrender.com') + '/auth/project/switch',
         { username: user.username, password: switchPass, projectName }
       )
       setActiveProject({ projectName: data.projectName, anonKey: data.anonKey, secretKey: data.secretKey })
