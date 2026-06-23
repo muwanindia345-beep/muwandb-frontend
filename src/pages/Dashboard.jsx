@@ -29,7 +29,6 @@ export default function Dashboard({ user, login }) {
   const [modalError, setModalError] = useState('')
   const [syncPopup, setSyncPopup] = useState(null)
 
-  // Project create state
   const [showProjectModal, setShowProjectModal] = useState(false)
   const [projectForm, setProjectForm] = useState({ projectName: '', password: '' })
   const [projectLoading, setProjectLoading] = useState(false)
@@ -150,7 +149,12 @@ export default function Dashboard({ user, login }) {
         projectName: projectForm.projectName
       })
       setNewProjectKeys({ anonKey: data.anonKey, secretKey: data.secretKey, projectName: data.projectName })
-      setProjects(prev => [...prev, data.projectName])
+
+      // Fix: projects ko localStorage mein save karo
+      const updatedProjects = [...projects, data.projectName]
+      setProjects(updatedProjects)
+      login({ ...user, projects: updatedProjects })
+
     } catch (e) {
       setProjectError(e.response?.data?.error || 'Something went wrong')
     }
@@ -164,7 +168,8 @@ export default function Dashboard({ user, login }) {
 
   return (
     <div className="container" style={{ padding: '32px 16px' }}>
-{/* Sync Popup */}
+
+      {/* Sync Popup */}
       {syncPopup && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div className="card" style={{ width: '100%', maxWidth: '360px' }}>
@@ -211,7 +216,6 @@ export default function Dashboard({ user, login }) {
         </div>
       )}
 
-      
       {/* Show Keys Modal */}
       {showKeysModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -275,7 +279,7 @@ export default function Dashboard({ user, login }) {
                   Har project ki apni isolated database aur API keys hongi
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
-                  <input placeholder="Project name (e.g. luciagram, myapp)"
+                  <input placeholder="Project name (e.g. myapp, testdb)"
                     value={projectForm.projectName}
                     onChange={e => setProjectForm({ ...projectForm, projectName: e.target.value })} />
                   <input type="password" placeholder="Your account password"
@@ -399,7 +403,7 @@ export default function Dashboard({ user, login }) {
         ))}
       </div>
 
-      {/* ── Projects Section ── */}
+      {/* Projects Section */}
       <div className="card" style={{ marginBottom: '24px', border: '1px solid #7c3aed55' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontWeight: 700, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
